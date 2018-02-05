@@ -1,0 +1,254 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>海外功能机广告后台</title>
+<!-- 引入资源 -->
+<%@ include file="/WEB-INF/views/common.jsp"%>
+<style type="text/css">
+td {
+    padding-bottom: 2px;
+}
+</style>
+<script type="text/javascript">
+	var loginForm,inUsername,inPassword,registerForm,registerUsername,registerPassword,
+	    registerCheckPassword,registerEmail,registerPhone;
+	$(function(){
+		
+		$("#switch_login").hide();
+		
+		loginForm = $("#loginForm");
+		inUsername = $("input[name=username]");
+		inPassword = $("input[name=password]");
+		
+		registerForm=$("#registerForm");
+		registerUsername=$("input[name=rusername]");
+		registerPassword=$("input[name=rpassword]");
+		registerCheckPassword=$("input[name=rcpassword]");
+		registerEmail=$("input[name=remail]");
+		registerPhone=$("input[name=rphone]");
+		
+		
+		// 解决session失效，iframe中显示登录界面的问题
+		if(window != top){
+			top.location.href="/login.jsp";
+		}
+		
+		// 登录参数验证
+		inUsername.textbox({
+			validType:'length[2,16]',
+			iconCls:'icon-man', 
+			iconAlign:'right',
+			required:true
+		});
+		
+		inPassword.textbox({
+			validType:'length[5,20]',
+			iconCls:'icon-lock', 
+			iconAlign:'right',
+			type:'password',
+			required:true
+		});
+		
+		// 点击回车键登录
+		$(document.documentElement).bind("keydown",function(event){
+			if(event.keyCode == 13){
+				$("#submitForm").click();
+			}
+		});
+		
+		// 登录
+		$("#submitForm").bind("click",function(){
+			loginForm.form("submit",{
+				url:"/login",
+				success:function(data){
+					// 将json字符串解析为json对象
+					data = $.parseJSON(data);
+					// 成功
+					if(data.success){
+						location.href="/index";
+					} 
+					// 失败
+					else {
+						var errorCode = data.code;
+						var message = data.message;
+						$.messager.alert('警告',message,'warning',function(){
+							// 用户名类型错误码,获取焦点
+							if(1000==errorCode || 1001==errorCode || 1002==errorCode){
+								inUsername.textbox("clear");
+								inUsername.textbox().next('span').find('input').focus();
+							}
+							// 密码类型错误码，获取焦点
+							else if(1010 == errorCode || 1011 == errorCode || 1012 == errorCode){
+								inPassword.textbox("clear");
+								inPassword.textbox().next('span').find('input').focus();
+							}
+						});
+					}
+				}
+			});
+		});
+		
+		//注册参数验证
+		registerUsername.textbox({
+			validType:'length[2,16]',
+			iconCls:'icon-man',
+			iconAlign:'right',
+			required:true
+		});
+		
+		registerPassword.textbox({
+			validType:'length[5,20]',
+			iconCls:'icon-lock', 
+			iconAlign:'right',			
+			required:true
+		});
+		
+		registerCheckPassword.textbox({
+			validType:'equalTo[\'#rpassword\']',
+			iconCls:'icon-lock', 
+			iconAlign:'right',
+			type:'password',
+			invalidMessage:'输入的密码不一致', 
+			missingMessage:'请再输入一次密码'
+		});
+		
+		registerEmail.textbox({
+			validType:'length[2,16]',
+			iconCls:'icon-email',
+			iconAlign:'right'
+		});
+		
+		registerPhone.textbox({
+			validType:'length[2,16]',
+			iconCls:'icon-',
+			iconAlign:'right'
+		});
+		
+		// 跳转注册
+		$("#regiForm").bind("click",function(){
+			$("#switch_qlogin").hide();
+			$("#switch_login").show();
+		});
+		
+		// 返回登录
+		$("#backLoginForm").bind("click",function(){
+			$("#switch_login").hide();
+			$("#switch_qlogin").show();
+		});
+		
+		// 注册提交，跳转到首页
+		$("#registerSubmitForm").bind("click",function(){
+			registerForm.form("submit",{
+				url:"/employee/register",
+				success:function(data){
+					// 将json字符串解析为json对象
+					data = $.parseJSON(data);
+					// 成功
+					if(data.success){
+						location.href="/index";
+					} 
+					// 失败
+					else {
+						var errorCode = data.code;
+						var message = data.message;
+						$.messager.alert('警告',message,'warning',function(){
+							// 新密码与确认密码不一致
+							if (code == 1013){
+								callback = function(){
+									registerCheckPassword.textbox("clear");
+									registerCheckPassword.next('span').find('input').focus();
+								};
+							}
+						});
+					}
+				}
+			});
+		});
+		
+	});
+</script>
+</head>
+<body style="background: url(/resources/image/login.png) no-repeat;">
+	<div align="center" style="margin-top: 210px">
+	
+       		<div align="center"  id="switch_qlogin" class="easyui-panel" 
+			style="width: 400px;height: 380px;background-image: url(/resources/image/zhong.png)">
+			<img width="180" height="70" src="/resources/image/logo.png" style="padding-top: 10px">
+			<p style="padding-left:18px;color: #FFFFFF;font-size: 17px">海外功能机广告后台</p>
+			<form id="loginForm" method="post">
+				<table align="center" style="margin-top: 5px">
+					<tr >
+						<td style="color: #FFFFFF;font-size: 15px" height="5px">账&emsp;号</td>
+					</tr>
+					<tr height="10" >
+						<td><input name="username" style="width: 240px;height: 30px"/></td>
+					</tr>
+					<tr height="5"></tr>
+					<tr>
+						<td style="color: #FFFFFF;font-size: 15px" >密&emsp;码</td>
+					</tr>
+					<tr height="20">
+						<td><input name="password" style="width: 240px;height: 30px"/></td>
+					</tr>
+					<tr height="60">
+						<td  align="center">
+							<a href="javascript:;" class="easyui-linkbutton" id="submitForm" style="width: 105px;height: 28px"><span style="font-size: 15px">登录</span></a> &emsp;
+							<a href="javascript:;" class="easyui-linkbutton" id="regiForm" style="width: 105px;height: 28px"><span style="font-size: 15px">注册</span></a> 
+						</td>
+					</tr>
+					<tr height="20"></tr>
+					<tr>
+						<td>
+							<p style="color: #AE00AE;font-size: 13px">*适用浏览器：火狐（推荐）、chorme</p>
+						</td>
+					</tr>
+				</table>
+			</form>
+		</div>
+		
+		<div align="center"  id="switch_login" class="easyui-panel" 
+			style="width: 400px;height: 380px;background-image: url(/resources/image/zhong.png)">
+			<img width="180" height="70" src="/resources/image/logo.png" style="padding-top: 10px">
+			<p style="padding-left:18px;color: #FFFFFF;font-size: 17px">海外功能机广告后台</p>
+			<form id="registerForm" method="post">
+				<table align="center" style="margin-top: 5px">
+					<tr >
+						<td style="color: #FFFFFF;font-size: 15px" height="5px">账&emsp;号</td>
+						<td><input name="rusername" style="width: 240px;height: 30px"/>
+					</tr>
+					<tr>
+						<td style="color: #FFFFFF;font-size: 15px" >密&emsp;码</td>
+						<td><input name="rpassword" style="width: 240px;height: 30px"/></td>
+					</tr>
+					<tr>
+						<td style="color: #FFFFFF;font-size: 15px" >确认密码</td>
+						<td><input name="rcpassword" style="width: 240px;height: 30px"/></td>
+					</tr>
+					<tr>
+						<td style="color: #FFFFFF;font-size: 15px" >邮&emsp;箱</td>
+						<td><input name="remail" style="width: 240px;height: 30px"/></td>
+					</tr>
+					<tr>
+						<td style="color: #FFFFFF;font-size: 15px" >手机号码</td>
+						<td><input name="rphone" style="width: 240px;height: 30px"/></td>
+					</tr>
+					<tr height="40">
+						<td  colspan="2" align="center">
+							<a href="javascript:;" class="easyui-linkbutton" id="registerSubmitForm" style="width: 105px;height: 28px"><span style="font-size: 15px">注册</span></a> &emsp;
+						</td>
+					</tr>
+					<tr>
+						<td colspan="2" align="center">
+							<p style="color: #AE00AE;font-size: 13px">*适用浏览器：火狐（推荐）、chorme</p>
+						</td>
+					</tr>
+				</table>
+			</form>
+		</div>
+		
+	</div>
+</body>
+</html>

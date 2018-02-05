@@ -1,0 +1,388 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8"
+	pageEncoding="UTF-8"%>
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>FreemeOS资源管理系统</title>
+<%@include file="/WEB-INF/views/common.jsp"%>
+<style type="text/css">
+
+
+.tree-title {
+  font-size: 18px;
+  display: inline-block;
+  text-decoration: none;
+  vertical-align: top;
+  white-space: nowrap;
+  padding: 0 8px;
+  height: 18px;
+  line-height: 18px;
+  color: #272727;
+  font-family: "宋体","Microsoft YaHei","黑体","宋体",sans-serif;
+}
+.tree-node-hover {
+  background: #ACD6FF;
+  color: #404040;
+}
+.tree-node-selected {
+  background: #C4E1FF;
+  color: #fff;
+}
+
+.panel-header {
+    background: rgba(0, 0, 0, 0) linear-gradient(to bottom, #eff5ff 0px, #ACD6FF 100%) repeat-x scroll 0 0;
+}
+
+
+.tabs-header, .tabs-tool {
+    background-color: #ACD6FF;
+}
+</style>
+<script type="text/javascript">
+	var tabs,mm,mm_tabclose,mm_tabcloseall,mm_tabcloseother,login_dialog,login_form,
+		inOldPassword,inNewPassword,inConfirmPassword;
+	$(function(){
+		tabs              = $("#mainTabs");
+		mm                = $("#mm");
+		mm_tabclose       = $("#mm_tabclose");
+		mm_tabcloseall    = $("#mm_tabcloseall");
+		mm_tabcloseother  = $("#mm_tabcloseother");
+		login_dialog      = $("#login_dialog");
+		login_form        = $("#login_form");
+		inOldPassword     = $("input[name=oldPassword]");
+		inNewPassword     = $("input[name=newPassword]");
+		inConfirmPassword = $("input[name=confirmPassword]")
+		
+		tabs.tabs({
+			tabWidth:120,
+			border:true,
+			title:"欢迎页"
+		});
+		
+		$("#menuTree").tree({
+			url:'/menu/treeData',
+			method:'get',
+			animate:true,
+			onClick:function(node){
+				// 是否有url属性，有才进行下一步
+				if(node.attributes && node.attributes.url){
+					var text = node.text;
+					// 是否选中
+					if(tabs.tabs("exists",text)){
+						/* var tab = tabs.tabs('getTab', text);
+						var url = $(tab.panel('options').content).attr('src');
+						tabs.tabs('update', {
+							tab : tab,
+							options : {
+								content:"<iframe src='"+url+"' frameborder='0' style='width: 100%;height: 100%'></iframe>"
+							}
+						}); */
+						tabs.tabs("select",text);
+					}else {
+						tabs.tabs("add",{
+							title:text,
+							tabWidth:120,
+							closable:true,
+							border:true,
+							content:"<iframe id='text' src='"+node.attributes.url+"' frameborder='0' style='width: 100%;height: 100%'></iframe>"
+						});
+					}
+				}
+				tabClose();
+			},
+			onSelect:function(node){
+				if(node.state=='closed'){
+					// 点击文字展开菜单
+					$(this).tree('expand',node.target);
+				}else {
+					// 点击文字关闭菜单
+					$(this).tree('collapse',node.target);
+				}
+			}
+		});
+		
+		// 初始化弹出框
+		login_dialog.dialog({
+			title: "密码修改",
+			iconCls:"icon-save",
+			buttons: "#login-buttons",
+			modal:true,
+			closed:true,
+			width: 450,    
+		    height: 260,
+			top:100
+		});
+		
+		// 初始化表单及数据验证
+		inOldPassword.textbox({
+			validType:'length[5,20]',
+			iconCls:'icon-lock', 
+			iconAlign:'right',
+			type:'password',
+			required:true
+		});
+		
+		inNewPassword.textbox({
+			validType:'length[5,20]',
+			iconCls:'icon-lock', 
+			iconAlign:'right',
+			type:'password',
+			required:true
+		});
+		
+		inConfirmPassword.textbox({
+			validType:'length[5,20]',
+			iconCls:'icon-lock', 
+			iconAlign:'right',
+			type:'password',
+			required:true
+		});
+		
+		// 命令对象
+		var crmFunction = {
+			// 退出系统
+			out:function(){
+				$.messager.confirm("确认对话框",
+						"是否确认退出系统?",function(yes){
+					if(yes){
+						$.post("/logout",function(data){
+							location.href="/login.jsp";
+						});
+					}
+				});
+			},
+			// 修改
+			edit:function(){
+				// 清空表单数据
+				login_form.form("clear");
+				login_dialog.dialog("open");
+				inOldPassword.next('span').find('input').focus();
+			},// 保存
+			save:function(){
+				login_form.form("submit",{
+					url : "/employee/updatePassword",
+					success : function(data) {
+						// 将json字符串解析为json对象
+						data = $.parseJSON(data);
+						resultHandle(data);
+					}
+				});
+			},// 取消编辑
+			cancel:function(){
+				login_dialog.dialog("close");
+			}
+		};
+		
+		// 命令处理
+		$("a[data_crm]").bind("click",function(){
+			var data_crm = $(this).attr("data_crm");
+			crmFunction[data_crm]();
+		});
+		
+		// 响应结果统一处理
+		function resultHandle(data){
+			// 成功
+			if(data.success){
+				login_dialog.dialog("close");
+				$.messager.alert('温馨提示', data.message, 'info',function(){
+					$.post("/logout",function(data){
+						location.href="/login.jsp";
+					});
+				});
+			} 
+			// 失败
+			else {
+				var code = data.code;
+				var callback;
+				// 系统异常||用户不存在
+				if (code == 500 || code == 600) {
+					login_dialog.dialog("close");
+					callback = function(){};
+				}
+				// 新密码与确认密码不一致
+				if (code == 1013){
+					callback = function(){
+						inNewPassword.textbox("clear");
+						inConfirmPassword.textbox("clear");
+						inNewPassword.next('span').find('input').focus();
+					};
+				}
+				// 旧密码与新密码不能一致
+				if(code == 1014) {
+					callback = function(){
+						inOldPassword.textbox("clear");
+						inNewPassword.textbox("clear");
+						inConfirmPassword.textbox("clear");
+						inOldPassword.next('span').find('input').focus();
+					};
+				}
+				// 旧密码错误
+				if(code == 1015) {
+					callback = function(){
+						inOldPassword.textbox("clear");
+						inOldPassword.next('span').find('input').focus();
+					};
+				}
+				$.messager.alert('温馨提示', data.message, 'error',callback);
+			}
+		}
+		tabCloseEven();
+	});
+	
+	function tabClose() {
+		/* // 单击重新加载选项卡
+		$(".tabs-inner").bind("click", function() {
+			var subtitle = $(this).children(".tabs-closable").text();
+			var tab = tabs.tabs('getTab', subtitle);
+			var url = $(tab.panel('options').content).attr('src');
+			tabs.tabs('update', {
+				tab : tab,
+				options : {
+					content:"<iframe src='"+url+"' frameborder='0' style='width: 100%;height: 100%'></iframe>"
+				}
+			});
+		}); */
+
+		/*双击关闭TAB选项卡*/
+		$(".tabs-inner").dblclick(function() {
+			var subtitle = $(this).children(".tabs-closable").text();
+			tabs.tabs('close', subtitle);
+
+		})
+		/*为选项卡绑定右键*/
+		$(".tabs-inner").bind('contextmenu', function(e) {
+			mm.menu('show', {
+				left : e.pageX,
+				top : e.pageY
+			});
+			var subtitle = $(this).children(".tabs-closable").text();
+			mm.data("currtab", subtitle);
+			tabs.tabs('select', subtitle);
+			return false;
+		});
+	}
+	//绑定右键菜单事件
+	function tabCloseEven() {
+		//关闭当前
+		mm_tabclose.click(function() {
+			var currtab_title = mm.data("currtab");
+			tabs.tabs('close', currtab_title);
+		})
+		//全部关闭
+		mm_tabcloseall.click(function() {
+			$('.tabs-inner span').each(function(i, n) {
+				var t = $(n).text();
+				if (t != '欢迎页') {
+					tabs.tabs('close', t);
+				}
+			});
+		});
+		//关闭除当前之外的TAB
+		mm_tabcloseother.click(function() {
+			var prevall = $('.tabs-selected').prevAll();
+			var nextall = $('.tabs-selected').nextAll();
+			if (prevall.length > 0) {
+				prevall.each(function(i, n) {
+					var t = $('a:eq(0) span', $(n)).text();
+					if (t != 'Home') {
+						tabs.tabs('close', t);
+					}
+				});
+			}
+			if (nextall.length > 0) {
+				nextall.each(function(i, n) {
+					var t = $('a:eq(0) span', $(n)).text();
+					if (t != 'Home') {
+						tabs.tabs('close', t);
+					}
+				});
+			}
+			return false;
+		});
+	}
+</script>
+<style type="text/css">
+	.border-right-none{
+		border-right: none;
+	}
+	.cs-north-logo {
+		display: inline-block;
+	}
+	.cs-north-info {
+		position: absolute;
+		color: #FFFFFF;
+		top: 10px;
+		right: 30px;
+		display: inline-block;
+	}
+</style>
+</head>
+<body class="easyui-layout" data-options="fit:true">
+	<div data-options="region:'north',border:false" style="height: 80px;background-color: #50BDFB/* background-image: url(/resources/image/top.png) */">
+		<div class="cs-north-logo" style="margin:0 auto;font-size:18px;color: #FFFFFF; text-align: center;padding:10px 0px 0px 30px"><img src="/resources/image/logo.png"></div>
+		<div class="cs-north-info" style="font-size:16px;padding:15px 20px 0px 0px">
+			您好，${sessionScope.current_user_in_session.nickname}[${sessionScope.current_user_in_session.username}]&emsp;
+			<a href="#" class="easyui-linkbutton" iconCls="icon-edit" style="height: 30px" data_crm="edit">修改密码</a>
+			<a href="#" class="easyui-linkbutton" iconCls="icon-out" style="height: 30px" data_crm="out">退出系统</a>
+		</div>
+	</div>
+	<!-- ,headerCls:'border-right-none',bodyCls:'border-right-none' -->
+	<div data-options="region:'west'" 
+		 title="系统菜单" style="width: 200px;background-color: #ECF5FF">
+		 <ul id="menuTree" ></ul>
+	</div>
+	<div data-options="region:'center',border:false">
+		<div id="mainTabs" data-options="fit:true,tabWidth:100">
+			<div title="欢迎页" style="background-repeat:repeat-x;background-size:cover" >
+				<div align="center" >
+					<!-- <font size="18" style="color:#BE77FF;cofont-weight: bold;">欢迎使用FreemeOS资源管理系统</font> -->
+					<div style="padding-top: 10px" style="background-repeat:repeat-x;background-size:cover">
+						<img src="/resources/image/welcome.jpg"></img>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<div data-options="region:'south',border:false" style="height: 40px;text-align: center;background-color: #2D88C5">
+		<p style="color: #FFFFFF;padding-top: 5px">Copyright © 2011-2016, All Rights Reserved.</p>
+	</div>
+	
+	<div id="mm" class="easyui-menu">
+		<div id="mm_tabclose">关闭</div>
+		<div id="mm_tabcloseother">关闭其他</div>
+		<div id="mm_tabcloseall">关闭全部</div>
+	</div>
+	
+	<div id="login_dialog" style="padding:10px">
+    	 <form id="login_form" method="post">
+    	 	<input type="hidden" name="id"/>
+    	 	<table align="center" style="padding: 10px">
+    	 		<tr>
+    	 			<td>旧&emsp;密码：</td>
+    	 			<td>
+    	 				<input name="oldPassword" style="width:240px;height: 28px;"/>
+    	 			</td>
+    	 		</tr>
+    	 		<tr>
+    	 			<td>新&emsp;密码：</td>
+    	 			<td>
+    	 				<input name="newPassword" style="width:240px;height: 28px;"/>
+    	 			</td>
+    	 		</tr>
+    	 		<tr>
+    	 			<td>确认密码：</td>
+    	 			<td>
+    	 				<input name="confirmPassword" style="width:240px;height: 28px;"/>
+    	 			</td>
+    	 		</tr>
+    	 	</table>
+    	 </form>
+    </div>
+    
+     <div id="login-buttons">
+        <a href="#" class="easyui-linkbutton" data-options="iconCls:'icon-save'" data_crm="save" >保存</a>
+        <a href="#" class="easyui-linkbutton" data-options="iconCls:'icon-cancel'" data_crm="cancel">取消</a>
+    </div>
+</body>
+</html>
